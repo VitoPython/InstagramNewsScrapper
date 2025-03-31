@@ -27,6 +27,10 @@ celery_app.conf.update(
     result_expires=3600,  # 1 hour
     task_track_started=True,
     
+    # Broker settings
+    broker_connection_retry_on_startup=True,
+    broker_connection_max_retries=10,
+    
     # Beat scheduler settings
     beat_schedule={
         'scrape-instagram-every-10-minutes': {
