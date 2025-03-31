@@ -10,7 +10,7 @@ Multi-functional service for Instagram data collection and news analysis. The sy
 ### Instagram Scraper:
 - Collection of posts from public Instagram accounts
 - Background processing of data using Celery
-- Storing results in a SQLite database
+- Storing results in a database (SQLite locally, PostgreSQL in Docker)
 - API for accessing data with filtering by hashtags
 
 ### News Analyzer:
@@ -21,7 +21,7 @@ Multi-functional service for Instagram data collection and news analysis. The sy
 - Web interface for working with the analyzer
 
 ## Requirements
-- Python 3.8+
+- Python 3.9+
 - FastAPI
 - SQLAlchemy
 - Celery
@@ -33,23 +33,23 @@ Multi-functional service for Instagram data collection and news analysis. The sy
 ## Installation
 
 1. Clone the repository:
-```
-git clone https://github.com/yourusername/instagram-scraper-news-analyzer.git
-cd instagram-scraper-news-analyzer
+```bash
+git clone https://github.com/VitoPython/InstagramNewsScrapper.git
+cd InstagramNewsScrapper
 ```
 
 2. Install requirements:
-```
+```bash
 pip install -r requirements.txt
 ```
 
 3. Install Spacy language models:
-```
+```bash
 python -m spacy download en_core_web_sm
 ```
 
 4. Install and run Redis (required for Celery):
-```
+```bash
 # For Linux
 apt-get install redis-server
 service redis-server start
@@ -67,25 +67,85 @@ brew services start redis
 ### Running locally:
 
 1. Start the FastAPI application:
-```
+```bash
 python main.py
 ```
 
 2. Start Celery worker (in a separate terminal):
-```
+```bash
 python celery_worker.py
 ```
 
 3. Start Celery beat scheduler (in a separate terminal, optional for periodic tasks):
-```
+```bash
 python celery_beat.py
 ```
 
-### Running with Docker:
+### Running with Docker Compose (Recommended):
 
-```
+1. Make sure you have Docker and Docker Compose installed
+
+2. Run the application stack:
+```bash
 docker-compose up -d
 ```
+
+This will start:
+- PostgreSQL database
+- Redis for Celery broker
+- FastAPI application on port 8000
+- Celery worker for background tasks
+- Celery beat for scheduled tasks
+
+3. Access the application:
+   - Web UI: http://localhost:8000/
+   - API docs: http://localhost:8000/docs
+
+4. Stop the application stack:
+```bash
+docker-compose down
+```
+
+### Docker Services
+
+The application is divided into separate Docker containers:
+
+1. **db** - PostgreSQL database for storing scraped data
+2. **redis** - Redis server for Celery messaging
+3. **api** - FastAPI application that handles HTTP requests
+4. **worker** - Celery worker that processes background tasks
+5. **beat** - Celery beat scheduler for recurring tasks
+
+Each service can be scaled independently:
+
+```bash
+docker-compose up -d --scale worker=3
+```
+
+## CI/CD Pipeline
+
+The project uses GitHub Actions for Continuous Integration and Deployment:
+
+1. **Testing**: Runs unit tests and reports coverage
+2. **Building**: Builds Docker images for each component
+3. **Deployment**: Deploys the application to the target environment
+
+### GitHub Actions Workflow
+
+The CI/CD pipeline is defined in `.github/workflows/ci_cd.yml` and includes:
+
+- Running tests with PostgreSQL and Redis services
+- Building Docker images
+- Pushing images to Docker Hub
+- Deploying to the production environment
+
+To set up CI/CD:
+
+1. Add the following secrets to your GitHub repository:
+   - `DOCKER_HUB_USERNAME` - Your Docker Hub username
+   - `DOCKER_HUB_TOKEN` - Your Docker Hub access token
+
+2. For deployment, configure additional secrets based on your hosting provider.
 
 ## API Endpoints
 
@@ -120,13 +180,32 @@ docker-compose up -d
 - `city_analyzer.py` - City detection in texts using NLP
 - `news_fetcher.py` - RSS feed parsing and news retrieval
 - `templates/` - HTML templates for web interface
-- `static/` - Static files (CSS, JS)
+- `tests/` - Unit and integration tests
+- `Dockerfile.api` - Docker configuration for API service
+- `Dockerfile.worker` - Docker configuration for Celery worker
+- `Dockerfile.beat` - Docker configuration for Celery beat
+- `docker-compose.yml` - Docker Compose configuration
+- `.github/workflows/` - CI/CD configuration
+
+## Testing
+
+Run the tests using pytest:
+
+```bash
+pytest
+```
+
+For code coverage:
+
+```bash
+pytest --cov=./ --cov-report=html
+```
 
 ## Notes
 
-- The Instagram scraper uses simulated data as Instagram's terms of service prohibit scraping.
-- For city analysis in news, a pre-trained BERT model is used.
-- The system is designed for educational purposes.
+- The Instagram scraper works with public Instagram accounts only
+- For city analysis in news, a pre-trained NLP model is used
+- The system is designed for educational purposes
 
 ## License
 
