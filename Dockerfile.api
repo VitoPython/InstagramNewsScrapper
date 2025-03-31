@@ -5,8 +5,14 @@ WORKDIR /app
 # Copy requirements
 COPY requirements.txt .
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies and PostgreSQL client
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc libpq-dev && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir psycopg2-binary && \
+    apt-get purge -y --auto-remove gcc libpq-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy project files
 COPY . .

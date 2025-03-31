@@ -11,4 +11,5 @@ redis==5.0.1
 spacy==3.7.2
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0-py3-none-any.whl
 https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.7.0/ru_core_news_sm-3.7.0-py3-none-any.whl
-feedparser==6.0.10 
+feedparser==6.0.10
+psycopg2-binary==2.9.9 
