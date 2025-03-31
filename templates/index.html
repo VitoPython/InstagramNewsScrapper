@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Analysis in News</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner-border {
+            width: 3rem; 
+            height: 3rem;
+        }
+        .city-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        .confidence-bar {
+            height: 20px;
+            background-color: #0095f6;
+            border-radius: 5px;
+        }
+        .tab-content {
+            padding-top: 20px;
+        }
+        .btn-primary {
+            background-color: #0095f6;
+            border-color: #0095f6;
+        }
+        .btn-primary:hover {
+            background-color: #0075c4;
+            border-color: #0075c4;
+        }
+        .results-card {
+            display: none;
+        }
+        .source-list, .news-list {
+            margin-bottom: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .source-item, .news-item {
+            padding: 10px 15px;
+            border: 1px solid #dee2e6;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: block;
+            width: 100%;
+            text-align: left;
+            background-color: white;
+        }
+        .source-item:hover, .news-item:hover {
+            background-color: #f1f9ff;
+        }
+        .source-item.active, .news-item.active {
+            background-color: #0095f6;
+            color: white;
+            border-color: #0095f6;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: #0095f6;
+            color: white;
+            border-color: #0095f6;
+        }
+        .nav-tabs .nav-link {
+            color: #0095f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">City Analysis in News</h1>
+        
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="inputTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" 
+                            type="button" role="tab" aria-controls="manual" aria-selected="true">
+                            Manual Input
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="rss-tab" data-bs-toggle="tab" data-bs-target="#rss" 
+                            type="button" role="tab" aria-controls="rss" aria-selected="false">
+                            RSS Feed
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="inputTabsContent">
+                    <!-- Manual Input -->
+                    <div class="tab-pane fade show active" id="manual" role="tabpanel" aria-labelledby="manual-tab">
+                        <form id="textForm">
+                            <div class="mb-3">
+                                <label for="newsText" class="form-label">Enter news text</label>
+                                <textarea class="form-control" id="newsText" rows="10" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Analyze</button>
+                        </form>
+                    </div>
+                    
+                    <!-- RSS Feed -->
+                    <div class="tab-pane fade" id="rss" role="tabpanel" aria-labelledby="rss-tab">
+                        <div class="mb-3">
+                            <label class="form-label">Select news source</label>
+                            <div id="sourceList" class="source-list">
+                                <!-- Will be dynamically populated -->
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Select news article</label>
+                            <div id="newsList" class="news-list">
+                                <div class="alert alert-info">Choose a source first</div>
+                            </div>
+                        </div>
+                        <button id="analyzeRssBtn" class="btn btn-primary" disabled>Analyze</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Loading indicator -->
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Analyzing text...</p>
+        </div>
+        
+        <!-- Analysis Results -->
+        <div class="card results-card" id="resultsCard">
+            <div class="card-header">
+                <h5>Analysis Results</h5>
+            </div>
+            <div class="card-body">
+                <h6>Analyzed text:</h6>
+                <div id="analyzedText" class="p-3 mb-3 bg-light rounded">
+                    <!-- Analyzed text will be shown here -->
+                </div>
+                
+                <h6>Cities detected:</h6>
+                <div id="citiesList">
+                    <!-- List of cities will be shown here -->
+                </div>
+                
+                <div id="noCitiesFound" class="alert alert-info" style="display: none;">
+                    No cities were found in the text.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // DOM Elements
+        const textForm = document.getElementById('textForm');
+        const newsText = document.getElementById('newsText');
+        const sourceList = document.getElementById('sourceList');
+        const newsList = document.getElementById('newsList');
+        const analyzeRssBtn = document.getElementById('analyzeRssBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultsCard = document.getElementById('resultsCard');
+        const analyzedText = document.getElementById('analyzedText');
+        const citiesList = document.getElementById('citiesList');
+        const noCitiesFound = document.getElementById('noCitiesFound');
+        
+        // Current selections
+        let selectedSource = '';
+        let selectedNewsIndex = '';
+        let newsData = [];
+        
+        // Load news sources when the page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/news/sources');
+                const data = await response.json();
+                
+                // Populate source list
+                sourceList.innerHTML = '';
+                data.sources.forEach(source => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'source-item';
+                    button.dataset.source = source;
+                    button.textContent = source.toUpperCase();
+                    button.addEventListener('click', () => selectSource(source, button));
+                    sourceList.appendChild(button);
+                });
+            } catch (error) {
+                console.error('Error loading sources:', error);
+                sourceList.innerHTML = '<div class="alert alert-danger">Failed to load news sources list</div>';
+            }
+        });
+        
+        // Select a news source
+        function selectSource(source, buttonElement) {
+            // Clear previous selection
+            document.querySelectorAll('.source-item').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Highlight selected source
+            buttonElement.classList.add('active');
+            selectedSource = source;
+            
+            // Reset news selection
+            selectedNewsIndex = '';
+            analyzeRssBtn.disabled = true;
+            
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+            newsList.innerHTML = '<div class="alert alert-info">Loading news...</div>';
+            
+            // Load news for selected source
+            fetch(`/news/rss/${source}`)
+                .then(response => response.json())
+                .then(data => {
+                    newsData = data;
+                    
+                    // Populate news list
+                    newsList.innerHTML = '';
+                    if (data.length === 0) {
+                        newsList.innerHTML = '<div class="alert alert-warning">No news found for this source</div>';
+                        return;
+                    }
+                    
+                    data.forEach((news, index) => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'news-item';
+                        button.dataset.index = index;
+                        button.textContent = news.title;
+                        button.addEventListener('click', () => selectNews(index, button));
+                        newsList.appendChild(button);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading news:', error);
+                    newsList.innerHTML = '<div class="alert alert-danger">Failed to load news from selected source</div>';
+                })
+                .finally(() => {
+                    loadingIndicator.style.display = 'none';
+                });
+        }
+        
+        // Select a news article
+        function selectNews(index, buttonElement) {
+            // Clear previous selection
+            document.querySelectorAll('.news-item').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Highlight selected news
+            buttonElement.classList.add('active');
+            selectedNewsIndex = index;
+            
+            // Enable analyze button
+            analyzeRssBtn.disabled = false;
+        }
+        
+        // Text form analysis
+        textForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const text = newsText.value.trim();
+            if (!text) {
+                alert('Please enter text for analysis');
+                return;
+            }
+            
+            loadingIndicator.style.display = 'block';
+            resultsCard.style.display = 'none';
+            
+            try {
+                const formData = new FormData();
+                formData.append('text', text);
+                
+                const response = await fetch('/news/analyze/city', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                displayResults(data);
+                
+            } catch (error) {
+                console.error('Error analyzing text:', error);
+                alert('An error occurred while analyzing the text');
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+        
+        // RSS news analysis
+        analyzeRssBtn.addEventListener('click', async () => {
+            if (!selectedSource || selectedNewsIndex === '') {
+                alert('Please select a source and news article');
+                return;
+            }
+            
+            loadingIndicator.style.display = 'block';
+            resultsCard.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/news/analyze/rss/${selectedSource}/${selectedNewsIndex}`);
+                const data = await response.json();
+                displayResults(data);
+                
+            } catch (error) {
+                console.error('Error analyzing news:', error);
+                alert('An error occurred while analyzing the news article');
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+        
+        // Display analysis results
+        function displayResults(data) {
+            // Display analyzed text
+            analyzedText.textContent = data.text;
+            
+            // Display found cities
+            citiesList.innerHTML = '';
+            
+            if (data.cities && data.cities.length > 0) {
+                data.cities.forEach(city => {
+                    const cityItem = document.createElement('div');
+                    cityItem.className = 'city-item';
+                    
+                    const cityHeader = document.createElement('div');
+                    cityHeader.className = 'd-flex justify-content-between mb-2';
+                    
+                    const cityName = document.createElement('h6');
+                    cityName.textContent = city.city;
+                    cityName.className = 'mb-0';
+                    
+                    const confidence = document.createElement('span');
+                    confidence.textContent = `${city.confidence}%`;
+                    confidence.className = 'badge bg-primary';
+                    
+                    cityHeader.appendChild(cityName);
+                    cityHeader.appendChild(confidence);
+                    
+                    const progressContainer = document.createElement('div');
+                    progressContainer.className = 'progress';
+                    
+                    const progressBar = document.createElement('div');
+                    progressBar.className = 'confidence-bar';
+                    progressBar.style.width = `${city.confidence}%`;
+                    
+                    progressContainer.appendChild(progressBar);
+                    
+                    cityItem.appendChild(cityHeader);
+                    cityItem.appendChild(progressContainer);
+                    
+                    citiesList.appendChild(cityItem);
+                });
+                
+                noCitiesFound.style.display = 'none';
+            } else {
+                noCitiesFound.style.display = 'block';
+            }
+            
+            // Display results card
+            resultsCard.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 
